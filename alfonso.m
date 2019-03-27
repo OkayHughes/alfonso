@@ -153,7 +153,7 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
 
         % checks progress towards termination criteria
         [status, metrics] = term(soln, probData, algParams, termConsts);
-                
+        
         if termFlag || ~strcmpi(status, 'UNKNOWN')
             numIters = iter-1;
             disp(['Done in ', int2str(numIters), ' iterations.']);
@@ -164,7 +164,8 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
         % prints progress metrics
         if mod(iter,1)==0 && opts.verbose
             fprintf('%d: pObj=%d pIn=%d dIn=%d gap=%d tau=%d kap=%d mu=%d\n',...
-            iter, metrics.O, metrics.P, metrics.D, metrics.A, soln.tau, soln.kappa, soln.mu);
+                    iter, metrics.O, metrics.P, metrics.D, metrics.A, soln.tau, soln.kappa, soln.mu);
+            datetime('now')
         end
 
         % PREDICTOR PHASE
@@ -174,7 +175,11 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
         results.betaPred(iter)  = betaPred;
         % raises a termination flag if predictor phase was not successful
         if predStatus == 0
-            results.betaPred(iter) = results.etaCorr(iter-1);
+            %old:
+            %results.betaPred(iter) = results.etaCorr(iter-1);
+            %crapshoot
+            results.betaPred(iter) = results.etaCorr(max(iter-1, 1));
+            
             fprintf('Predictor could not improve the solution.\n');
             termFlag = 1;
         end
@@ -214,301 +219,8 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
 
 return
 
-function [solnAlpha, alpha, betaAlpha, algParams, predStatus] = pred(soln, probData, gH, gH_Params, myLinSolve, algParams, opts)
-% This method performs a predictor step in the algorithm.
-% --------------------------------------------------------------------------
-% USAGE of "pred"
-% [solnAlpha, alpha, betaAlpha, algParams, predStatus] = pred(soln, probData, gH, gH_Params, myLinSolve, algParams, opts)
-% --------------------------------------------------------------------------
-% INPUT
-% soln:         current iterate
-% probData:     data for the conic optimization problem
-% gH:           method for computing the gradient and Hessian of the barrier function
-% gH_Params:	parameters associated with the method gH
-% myLinSolve:   solution method for the Newton system
-% algParams:    algorithmic parameters
-% opts:         algorithmic options
-%
-% OUTPUT
-% solnAlpha:    new iterate
-% alpha:        predictor step size
-% betaAlpha:    neighborhood parameter at the end of the predictor phase
-% algParams:    algorithmic parameters
-% predStatus:   0 if predictor phase was not successful. 1 if predictor 
-%               phase was successful.
-% --------------------------------------------------------------------------
-% EXTERNAL FUNCTIONS CALLED IN THIS FUNCTION
-% None.
-% --------------------------------------------------------------------------
 
-    x       = soln.x;
-    tau     = soln.tau;
-    s       = soln.s;
-    kappa   = soln.kappa;
-    y       = soln.y;
-    
-    A = probData.A;
-    b = probData.b;
-    c = probData.c;
-    [m, n] = size(A);
-    
-    RHS = zeros(m+2*n+2,1);
-    RHS(1:m+n+1)        = -[A*x - b*tau; -A'*y + c*tau - s; b'*y - c'*x - kappa];
-    RHS(m+n+2:end)      = -[s; kappa];
-    
-    % computes Newton direction
-    dsoln = linSolveMain(soln, probData, RHS, myLinSolve, algParams, opts);
-    
-    % line search is done even when predLineSearch == 0 to make sure next
-    % iterate stays within the beta-neighborhood.
-    betaAlpha       = Inf; 
-    solnAlphaInNhd  = 0;
-    alphaPrevOK     = -1;
-    predStatus      = 1;
-    
-    nSteps = 0;
-    alpha = algParams.alphaPred;
-    
-    while true
-        nSteps = nSteps + 1;
-        
-        solnAlpha.y         = y     + alpha*dsoln.y;
-        solnAlpha.x         = x     + alpha*dsoln.x;
-        solnAlpha.tau       = tau   + alpha*dsoln.tau;
-        solnAlpha.s         = s     + alpha*dsoln.s;
-        solnAlpha.kappa     = kappa + alpha*dsoln.kappa;            
 
-        [solnAlpha.in, solnAlpha.g, solnAlpha.H, solnAlpha.L] = gH(solnAlpha.x, gH_Params);
-
-        % primal iterate is inside the cone
-        if solnAlpha.in
-            solnAlpha.mu	= (solnAlpha.x'*solnAlpha.s +...
-                solnAlpha.tau*solnAlpha.kappa)/gH_Params.bnu;
-            solnAlpha.psi	= [solnAlpha.s; solnAlpha.kappa] +...
-                solnAlpha.mu*[solnAlpha.g; -1/solnAlpha.tau];                
-            betaAlpha       = sqrt(sum((solnAlpha.L\solnAlpha.psi(1:end-1)).^2) + ...
-                (solnAlpha.tau*solnAlpha.psi(end))^2)/solnAlpha.mu;
-            solnAlphaInNhd  = (betaAlpha < algParams.beta);
-        end
-        
-        % iterate is inside the beta-neighborhood
-        if solnAlpha.in && solnAlphaInNhd 
-            % either the previous iterate was outside the beta-neighborhood
-            % or increasing alpha again will make it > 1 
-            if alphaPrevOK == 0 || alpha > algParams.predLSMulti
-                if opts.predLineSearch == 1; algParams.alphaPred = alpha; end;
-                break;
-            end
-            alphaPrevOK     = 1;
-            alphaPrev       = alpha;
-            betaAlphaPrev   = betaAlpha;
-            solnAlphaPrev   = solnAlpha;
-            alpha           = alpha/algParams.predLSMulti;
-        else    % iterate is outside the beta-neighborhood
-            % previous iterate was in the beta-neighborhood
-            if alphaPrevOK == 1
-                alpha       = alphaPrev;
-                betaAlpha   = betaAlphaPrev;
-                solnAlpha   = solnAlphaPrev;
-                if opts.predLineSearch == 1; algParams.alphaPred = alpha; end;
-                break;
-            end
-            % last two iterates were outside the beta-neighborhood and
-            % alpha is very small
-            if alpha < algParams.alphaPredThreshold
-                predStatus  = 0; % predictor has failed
-                alpha       = 0;
-                betaAlpha   = Inf; % overwritten later in alfonso
-                solnAlpha   = soln;
-                if opts.predLineSearch == 1; algParams.alphaPred = alpha; end;
-                break;
-            end
-            % alphaPrev, betaAlphaPrev, solnAlphaPrev will not be used
-            % given alphaPrevOK == 0
-            alphaPrevOK     = 0;
-            alphaPrev       = alpha;
-            betaAlphaPrev   = betaAlpha;
-            solnAlphaPrev   = solnAlpha;
-            alpha = algParams.predLSMulti*alpha;
-        end
-    end
-        
-return
-
-function [solnAlpha, corrStatus] = corr(soln, probData, gH, gH_Params, myLinSolve, algParams, opts)
-% This method performs a single corrector step in the algorithm.
-% --------------------------------------------------------------------------
-% USAGE of "corr"
-% [solnAlpha, corrStatus] = corr(soln, probData, gH, gH_Params, myLinSolve, algParams, opts)
-% --------------------------------------------------------------------------
-% INPUT
-% soln:         current iterate
-% probData:     data for the conic optimization problem
-% gH:           method for computing the gradient and Hessian 
-%               of the barrier function
-% gH_Params:    parameters associated with the method gH
-% myLinSolve:   solution method for the Newton system
-% algParams:    algorithmic parameters
-% opts:         algorithmic options
-%
-% OUTPUT
-% solnAlpha:    new iterate
-% corrStatus:   0 if corrector phase was not successful. 1 if corrector 
-%               phase was successful.
-% --------------------------------------------------------------------------
-% EXTERNAL FUNCTIONS CALLED IN THIS FUNCTION
-% None.
-% --------------------------------------------------------------------------
-
-    [m, n] = size(probData.A);
-
-    RHS = zeros(m+2*n+2,1);
-    RHS(m+n+2:end)  = -soln.psi;
-    
-    dsoln = linSolveMain(soln, probData, RHS, myLinSolve, algParams, opts);
-    alpha = algParams.alphaCorr;
-    corrStatus = 1;
-    
-    % does line search to make sure next primal iterate remains inside the cone
-    for nSteps = 1:opts.maxCorrLSIters
-        
-        solnAlpha.y     = soln.y     + alpha*dsoln.y;
-        solnAlpha.x     = soln.x     + alpha*dsoln.x;
-        solnAlpha.tau   = soln.tau   + alpha*dsoln.tau;
-        solnAlpha.s     = soln.s     + alpha*dsoln.s;
-        solnAlpha.kappa = soln.kappa + alpha*dsoln.kappa;
-        
-        [solnAlpha.in, solnAlpha.g, solnAlpha.H, solnAlpha.L] = gH(solnAlpha.x, gH_Params);
-        
-        % terminates line search if primal iterate is inside the cone
-        if solnAlpha.in
-            solnAlpha.mu   = (solnAlpha.x'*solnAlpha.s + solnAlpha.tau*solnAlpha.kappa)/gH_Params.bnu;
-            solnAlpha.psi  = [solnAlpha.s;solnAlpha.kappa] + solnAlpha.mu*[solnAlpha.g;-1/solnAlpha.tau];                
-            break;
-        end
-        
-        alpha = algParams.corrLSMulti*alpha;        
-    end
-        
-    if solnAlpha.in == 0
-        corrStatus  = 0; % corrector has failed
-        solnAlpha   = soln;
-    end
-    
-return
-
-function dsoln = linSolveMain(soln, probData, RHS, myLinSolve, algParams, opts)
-% This method sets up the Newton system and computes its solution.
-% --------------------------------------------------------------------------
-% USAGE of "linSolveMain"
-% dsoln = linSolveMain(soln, probData, RHS, myLinSolve, algParams, opts)
-% --------------------------------------------------------------------------
-% INPUT
-% soln:         current iterate
-% probData:     data for the conic optimization problem
-% RHS:          right-hand side of the Newton system
-% myLinSolve:   solution method for the Newton system
-% algParams:    algorithmic parameters
-% opts:         algorithmic options
-%
-% OUTPUT
-% dsoln:	computed Newton direction
-% --------------------------------------------------------------------------
-% EXTERNAL FUNCTIONS CALLED IN THIS FUNCTION
-% None.
-% --------------------------------------------------------------------------
-    
-    [m, n] = size(probData.A);
-    delta  = myLinSolve(soln, probData, RHS);
-    
-    if opts.maxItRefineSteps > 0        
-               
-        % checks to see if we need to refine the solution
-        if rcond(full(soln.H)) < eps            
-            
-            LHS                         = probData.LHS;    
-            LHS(m+n+1+(1:n),m+(1:n))    = soln.mu*soln.H;
-            LHS(end,m+n+1)              = soln.mu/soln.tau^2;
-            
-            exitFlag    = 0;
-            res         = residual3p(LHS, delta, RHS);
-            resNorm     = norm(res);  
-            for iter = 1:opts.maxItRefineSteps
-                if exitFlag; break; end;
-                d           = myLinSolve(soln, probData, res);
-                deltaNew	= delta - d;
-                resNew      = residual3p(LHS, deltaNew, RHS);
-                resNewNorm	= norm(resNew);
-                    
-                % stops iterative refinement if there is not enough progress
-                if resNewNorm > algParams.itRefineThreshold*resNorm
-                    exitFlag = 1;
-                end
-                % updates solution if residual norm is smaller
-                if resNewNorm < resNorm
-                    delta       = deltaNew;
-                    res         = resNew;
-                    resNorm     = resNewNorm;
-                end
-            end
-        end
-        
-    end
-    
-    dsoln.y     = delta(1:m);
-    dsoln.x     = delta(m+(1:n));
-    dsoln.tau   = delta(m+n+1);
-    dsoln.s     = delta(m+n+1+(1:n));
-    dsoln.kappa = delta(end);
-    
-return
-
-function [delta, probData] = linSolve3(soln, probData, RHS)
-% This method implements a block solver for the Newton system.
-% --------------------------------------------------------------------------
-% USAGE of "linSolve3"
-% delta = linSolve3(soln, probData, RHS)
-% --------------------------------------------------------------------------
-% INPUT
-% soln:         current iterate
-% probData:     data for the conic optimization problem
-% RHS:          right-hand side of the Newton system
-%
-% OUTPUT
-% delta:	computed Newton direction
-% --------------------------------------------------------------------------
-% EXTERNAL FUNCTIONS CALLED IN THIS FUNCTION
-% None.
-% --------------------------------------------------------------------------
-       
-    A = probData.A;
-    b = probData.b;
-    c = probData.c;
-    [m, n] = size(A);
-    
-    ry     = RHS(1:m);
-    rx     = RHS(m+(1:n));
-    rtau   = RHS(m+n+1);
-    rs     = RHS(m+n+1+(1:n));
-    rkappa = RHS(end);
-    
-    Hic     = soln.L'\(soln.L\c);
-    HiAt    = -soln.L'\(soln.L\A');
-    Hirxrs  = soln.L'\(soln.L\(rx+rs));
-    
-    LHSdydtau   = [zeros(m), -b; b', soln.mu/soln.tau^2] - [A; -c']*[HiAt, Hic]/soln.mu;
-    RHSdydtau   = [ry; rtau+rkappa] - [A; -c']*Hirxrs/soln.mu;
-    dydtau      = LHSdydtau\RHSdydtau;
-    dx          = (Hirxrs - [HiAt, Hic]*dydtau)/soln.mu;
-
-    delta               = zeros(m+2*n+2, 1);
-    delta(1:m)          = dydtau(1:m);
-    delta(m+n+1)        = dydtau(m+1);
-    delta(m+(1:n))      = dx;
-    delta(m+n+1+(1:n))  = -rx - [A', -c]*dydtau;
-    delta(end)          = -rtau + b'*dydtau(1:m) - c'*dx;
-    
-return
 
 function opts = setOpts(opts)
 % This method sets the empty algorithmic options to their default values.
