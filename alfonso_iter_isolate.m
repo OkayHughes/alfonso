@@ -1,124 +1,21 @@
-% This code is an implementation of the algorithm for non-symmetric conic 
-% optimization, which was originally presented in:
-%
-% A. Skajaa and Y. Ye, A homogeneous interior-point algorithm for nonsymmetric 
-% convex conic optimization, Mathematical Programming Ser. A, 150 (2015), 
-% pp. 391-422. Available at https://doi.org/10.1007/s10107-014-0773-1.
-%
-% The implementation is based on the corrected analysis of the algorithm
-% presented in:
-%
-% D. Papp and S. Yildiz. On "A homogeneous interior-point algorithm for
-% nonsymmetric convex conic optimization". Available at 
-% https://arxiv.org/abs/1712.00492.
-% -------------------------------------------------------------------------
-% Copyright (C) 2018 David Papp and Sercan Yildiz.
-%
-% Authors:  
-%          David Papp       <dpapp@ncsu.edu>
-%          Sercan Yildiz    <syildiz@email.unc.edu>  
-%
-% Date: 
-% 
-% This code has been developed and tested with Matlab R2016b.
-% -------------------------------------------------------------------------
-% EXTERNAL FUNCTIONS CALLED IN THIS FILE
-% None.
-% --------------------------------------------------------------------------
-
-
-function results = alfonso(probData, x0, gH, gH_Params, opts)
-% ALgorithm FOr Non-Symmetric Optimization
-% This is the main method for the algorithm.
-% --------------------------------------------------------------------------
-% USAGE of "alfonso"
-% results = alfonso(probData, x0, gH, gH_Params, opts)
-% --------------------------------------------------------------------------
-% INPUT
-% probData:                     data for the conic optimization problem
-% - probData.A:                 constraint matrix
-% - probData.b:                 right-hand side vector
-% - probData.c:                 cost vector
-% x0:                           initial primal iterate
-% gH:                           method for computing the gradient and 
-%                               Hessian of the barrier function
-% gH_Params:                    parameters associated with the method gH
-% - gH_Params.bnu:              complexity parameter of the augmented
-%                               barrier (nu-bar)
-% opts:                         algorithmic options
-% - opts.predLineSearch:        0 if a fixed step size is to be used in the 
-%                               predictor step. 1 if the step size is to be 
-%                               determined via line search in the predictor
-%                               step. default value: 1.
-% - opts.maxCorrSteps:          maximum number of corrector steps. 
-%                               possible values: 1, 2, or 4. default value: 4.
-% - opts.corrCheck:             0 if maxCorrSteps corrector steps are to be 
-%                               performed at each corrector phase. 1 if the
-%                               corrector phase can be terminated before 
-%                               maxCorrSteps corrector steps if the iterate 
-%                               is in the eta-neighborhood. default value: 1.
-% - opts.optimTol:              optimization tolerance parameter. default
-%                               value: 1e-06.
-% - opts.maxCorrLSIters:        maximum number of line search iterations in
-%                               each corrector step. default value: 8.
-% - opts.maxSmallPredSteps:     maximum number of predictor step size 
-%                               reductions allowed with respect to the safe
-%                               fixed step size. default value: 8.
-% - opts.maxItRefineSteps:      maximum number of iterative refinement steps 
-%                               in linear system solves. default value: 0.
-% - opts.verbose:               0 if output is to be suppressed. 1 if
-%                               progress is to be printed at each iteration.
-%                               default value: 1.
-% - opts.save_dir               directory to save iterates to, if doesn't
-%                               exist will not save
-%
-% OUTPUT
-% results:                  final solution and iteration statistics
-% - results.nIterations:	total number of iterations
-% - results.alphaPred:      predictor step size at each iteration
-% - results.betaPred:       neighborhood parameter at the end of the
-%                           predictor phase at each iteration
-% - results.etaCorr:        neighborhood parameter at the end of the
-%                           corrector phase at each iteration
-% - results.mu:             complementarity gap at each iteration
-% - results.x:              final value of the primal variables
-% - results.s:              final value of the dual slack variables
-% - results.y:              final value of the dual free variables
-% - results.tau:            final value of the tau-variable
-% - results.kappa:          final value of the kappa-variable
-% - results.pObj:           final primal objective value
-% - results.dObj:           final dual objective value
-% - results.dGap:           final duality gap
-% - results.cGap:           final complementarity gap
-% - results.rel_dGap:       final relative duality gap   
-% - results.rel_cGap:       final relative complementarity gap
-% - results.pRes:           final primal residuals
-% - results.dRes:           final dual residuals
-% - results.pIn:            final primal infeasibility
-% - results.dIn:            final dual infeasibility
-% - results.rel_pIn:        final relative primal infeasibility
-% - results.rel_dIn:        final relative dual infeasibility
-% --------------------------------------------------------------------------
-% EXTERNAL FUNCTIONS CALLED IN THIS FUNCTION
-% None.
-% --------------------------------------------------------------------------
-
-    if nargin == 4
-        opts = struct([]);
-    elseif nargin < 4
-        error('alfonso needs more input arguments.')
-    elseif nargin > 5
-        error('alfonso needs fewer input arguments.')
-    end
-    % sets algorithmic options
-    opts = setOpts(opts); 
+function results = alfonso_iter_isolate(iter, mat_dir, gH)
+%This version runs a particular iterate of an alfonso program from scratch
+% INPUT:
+%    iter_num: number of the iteration to run
+%    mat_dir: directory in which the cold-start data from alfonso were
+%    saved.
     
-    if isfield(opts, "save_dir")
-        alf_params.prob_data = probData;
-        alf_params.gH_params = gH_Params;
-        alf_params.opts = opts;
-    end
-   
+    cold_start_data = load(fullfile(mat_dir, sprintf("%d.mat", iter)));
+    alf_params = cold_start_data.fn_params;
+    probData = alf_params.prob_data;
+    gH_Params = alf_params.gH_params;
+    opts = alf_params.opts;
+    
+    
+    
+    % sets algorithmic options
+    opts = setOpts(opts);
+    
     % checks the problem data for consistency
     inputCheck(probData);
     
@@ -137,101 +34,93 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
     % sets the solution method for the Newton system
     myLinSolve = @linSolve3;
     
-    % sets algorithmic parameters
-    algParams = setAlgParams(gH_Params, opts);
-    
     % creates arrays for iteration statistics
-    results.alphaPred   = zeros(algParams.maxIter, 1);
-    results.betaPred    = zeros(algParams.maxIter, 1);
-    results.etaCorr     = zeros(algParams.maxIter, 1);
-    results.mu          = zeros(algParams.maxIter, 1);
-    
+    results.alphaPred   = 0;
+    results.betaPred    = 0;
+    results.etaCorr     = 0;
+    results.mu          = 0;
+
     % sets constants for termination criteria
     termConsts.pRes = max([1, norm([A,b],Inf)]);
     termConsts.dRes = max([1, norm([A',speye(n),-c],Inf)]);
     termConsts.comp = max([1, norm([-c',b',1],Inf)]);
-
-    % creates the central primal-dual iterate corresponding to x0
-    soln = initSoln(x0, probData, gH, gH_Params);
     
-    termFlag = 0;
-    numIters = 0;
-    for iter = 1:algParams.maxIter
-        if isfield(opts, "save_dir")
-            cold_start_data.fn_params = alf_params;
-            cold_start_data.alg_params = algParams;
-            cold_start_data.soln = soln;
-            cold_start_data.term_flag = termFlag;
-            save(fullfile(opts.save_dir, sprintf("%d.mat", iter)), 'cold_start_data')
+    % creates the central primal-dual iterate corresponding to x0
+    
+    algParams = cold_start_data.alg_params;
+    soln = cold_start_data.soln;
+    termFlag = cold_start_data.term_flag;
+    % checks progress towards termination criteria
+    [status, metrics] = term(soln, probData, algParams, termConsts);
+    results.status = status;
+    results.metrics = metrics;
+
+    if termFlag || ~strcmpi(status, 'UNKNOWN')
+        numIters = iter-1;
+        disp(['Done in ', int2str(numIters), ' iterations.']);
+        disp(['Status = ', status]);
+        return
+    end
+
+    % prints progress metrics
+    if mod(iter,1)==0 && opts.verbose
+        fprintf('%d: pObj=%d pIn=%d dIn=%d gap=%d tau=%d kap=%d mu=%d\n',...
+                iter, metrics.O, metrics.P, metrics.D, metrics.A, soln.tau, soln.kappa, soln.mu);
+        datetime('now')
+    end
+
+    % PREDICTOR PHASE
+    [soln, alphaPred, betaPred, algParams, predStatus] =...
+        pred(soln, probData, gH, gH_Params, myLinSolve, algParams, opts);
+
+    results.alphaPred = alphaPred;
+    results.betaPred  = betaPred;
+    % raises a termination flag if predictor phase was not successful
+    if predStatus == 0
+        %old:
+        %results.betaPred(iter) = results.etaCorr(iter-1);
+        %crapshoot
+        results.betaPred = NaN;
+
+        fprintf('Predictor could not improve the solution.\n');
+        termFlag = 1;
+    end
+
+    % CORRECTOR PHASE
+    results.etaCorr = results.betaPred;
+    % skips corrector phase if corrCheck == 1 and current iterate is 
+    % in the eta-neighborhood 
+    results.solns = cell(algParams.maxCorrSteps, 1);
+    results.statuses = zeros(algParams.maxCorrSteps, 1);
+    if (~opts.corrCheck || results.etaCorr > algParams.eta) && ~termFlag
+        for corrIter = 1:algParams.maxCorrSteps
+            [soln, corrStatus] = corr(soln, probData, gH, gH_Params, myLinSolve, algParams, opts);
+            results.solns{corrIter} = soln;
+            results.statuses(corrIter) = corrStatus;
+            % exits corrector phase and raises a termination flag if 
+            % last corrector step was not successful
+            if corrStatus == 0
+                fprintf('Corrector could not improve the solution.\n');
+                termFlag = 1; break;
+            end
+            % exits corrector phase if corrCheck == 1 and current
+            % iterate is in the eta-neighborhood
+            if (opts.corrCheck && corrIter < algParams.maxCorrSteps) || corrIter == algParams.maxCorrSteps
+                results.etaCorr = sqrt(sum((soln.L\soln.psi(1:end-1)).^2) +...
+                    (soln.tau*soln.psi(end))^2)/soln.mu;
+                if results.etaCorr <= algParams.eta; break; end;
+            end
         end
-        % checks progress towards termination criteria
-        [status, metrics] = term(soln, probData, algParams, termConsts);
-        
-        if termFlag || ~strcmpi(status, 'UNKNOWN')
-            numIters = iter-1;
-            disp(['Done in ', int2str(numIters), ' iterations.']);
-            disp(['Status = ', status]);
-            break;
-        end
-        
-        % prints progress metrics
-        if mod(iter,1)==0 && opts.verbose
-            fprintf('%d: pObj=%d pIn=%d dIn=%d gap=%d tau=%d kap=%d mu=%d\n',...
-                    iter, metrics.O, metrics.P, metrics.D, metrics.A, soln.tau, soln.kappa, soln.mu);
-            datetime('now')
-        end
-        
-        
-        % PREDICTOR PHASE
-        [soln, alphaPred, betaPred, algParams, predStatus] =...
-            pred(soln, probData, gH, gH_Params, myLinSolve, algParams, opts);
-        
-        results.alphaPred(iter) = alphaPred;
-        results.betaPred(iter)  = betaPred;
-        % raises a termination flag if predictor phase was not successful
-        if predStatus == 0
-            %old:
-            %results.betaPred(iter) = results.etaCorr(iter-1);
-            %crapshoot
-            results.betaPred(iter) = results.etaCorr(max(iter-1, 1));
-            
-            fprintf('Predictor could not improve the solution.\n');
+        % raises a termination flag if corrector phase was not successful
+        if results.etaCorr > algParams.eta
+            fprintf('Corrector phase finished outside the eta-neighborhood.\n');
             termFlag = 1;
         end
-        
-        % CORRECTOR PHASE
-        results.etaCorr(iter) = results.betaPred(iter);
-        % skips corrector phase if corrCheck == 1 and current iterate is 
-        % in the eta-neighborhood 
-        if (~opts.corrCheck || results.etaCorr(iter) > algParams.eta) && ~termFlag
-            for corrIter = 1:algParams.maxCorrSteps
-                [soln, corrStatus] = corr(soln, probData, gH, gH_Params, myLinSolve, algParams, opts);
-                % exits corrector phase and raises a termination flag if 
-                % last corrector step was not successful
-                if corrStatus == 0
-                    fprintf('Corrector could not improve the solution.\n');
-                    termFlag = 1; break;
-                end
-                % exits corrector phase if corrCheck == 1 and current
-                % iterate is in the eta-neighborhood
-                if (opts.corrCheck && corrIter < algParams.maxCorrSteps) || corrIter == algParams.maxCorrSteps
-                    results.etaCorr(iter) = sqrt(sum((soln.L\soln.psi(1:end-1)).^2) +...
-                        (soln.tau*soln.psi(end))^2)/soln.mu;
-                    if results.etaCorr(iter) <= algParams.eta; break; end;
-                end
-            end
-            % raises a termination flag if corrector phase was not successful
-            if results.etaCorr(iter) > algParams.eta
-                fprintf('Corrector phase finished outside the eta-neighborhood.\n');
-                termFlag = 1;      
-            end
-        end
-        results.mu(iter) = soln.mu;
-        
     end
-    
-    % prepares final solution and iteration statistics
-    results = prepResults(results, soln, probData, numIters);
+    results.termFlag = termFlag;
+    results.mu = soln.mu;
+
+
 
 return
 
