@@ -69,6 +69,8 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
 % - opts.verbose:               0 if output is to be suppressed. 1 if
 %                               progress is to be printed at each iteration.
 %                               default value: 1.
+% - opts.save_dir               directory to save iterates to, if doesn't
+%                               exist will not save
 %
 % OUTPUT
 % results:                  final solution and iteration statistics
@@ -150,7 +152,10 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
     termFlag = 0;
     numIters = 0;
     for iter = 1:algParams.maxIter
-
+        if isfield(opts, "save_dir")
+            save_its = 1;
+            saveout = struct();
+        end
         % checks progress towards termination criteria
         [status, metrics] = term(soln, probData, algParams, termConsts);
         
@@ -167,10 +172,25 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
                     iter, metrics.O, metrics.P, metrics.D, metrics.A, soln.tau, soln.kappa, soln.mu);
             datetime('now')
         end
-
+        if save_its
+            saveout.opts = opts;
+            saveout.gH_Params = gH_Params;
+            saveout.init.soln = soln;
+            saveout.init.probData = probData;
+            saveout.init.algParams = algParams;
+        end
+        
+        
         % PREDICTOR PHASE
         [soln, alphaPred, betaPred, algParams, predStatus] =...
             pred(soln, probData, gH, gH_Params, myLinSolve, algParams, opts);
+        if save_its
+            saveout.pred.soln = soln;
+            saveout.pred.alphaPred = alphaPred;
+            saveout.pred.betaPred = betaPred;
+            saveout.pred.algParams = algParams;
+        end
+        
         results.alphaPred(iter) = alphaPred;
         results.betaPred(iter)  = betaPred;
         % raises a termination flag if predictor phase was not successful
@@ -183,14 +203,20 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
             fprintf('Predictor could not improve the solution.\n');
             termFlag = 1;
         end
-
+        
         % CORRECTOR PHASE
         results.etaCorr(iter) = results.betaPred(iter);
         % skips corrector phase if corrCheck == 1 and current iterate is 
         % in the eta-neighborhood 
+        if save_its
+           saveout.corr_solns = cell(algParams.maxCorrSteps, 1);
+        end
         if (~opts.corrCheck || results.etaCorr(iter) > algParams.eta) && ~termFlag
             for corrIter = 1:algParams.maxCorrSteps
                 [soln, corrStatus] = corr(soln, probData, gH, gH_Params, myLinSolve, algParams, opts);
+                if save_its
+                    saveout.corr_solns{corrIter} = soln;
+                end
                 % exits corrector phase and raises a termination flag if 
                 % last corrector step was not successful
                 if corrStatus == 0
@@ -211,7 +237,9 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
                 termFlag = 1;      
             end
         end
+        save(fullfile(opts.save_dir, sprintf("%d.mat", iter)), 'saveout')
         results.mu(iter) = soln.mu;
+        
     end
     
     % prepares final solution and iteration statistics
