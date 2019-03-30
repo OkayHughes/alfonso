@@ -157,9 +157,7 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
     termFlag = 0;
     numIters = 0;
     for iter = 1:algParams.maxIter
-        fprintf("IUNNO\n")
         if isfield(opts, "save_dir")
-            fprintf("AWhlKDAHLKGAFDGHLFAS %s\n", fullfile(opts.save_dir, sprintf("%d.mat", iter)))
             cold_start_data.fn_params = alf_params;
             cold_start_data.alg_params = algParams;
             cold_start_data.soln = soln;
