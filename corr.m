@@ -53,7 +53,7 @@ function [solnAlpha, corrStatus] = corr(soln, probData, gH, gH_Params, myLinSolv
         
         alpha = algParams.corrLSMulti*alpha;        
     end
-        
+    
     if solnAlpha.in == 0
         corrStatus  = 0; % corrector has failed
         solnAlpha   = soln;

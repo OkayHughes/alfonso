@@ -6,6 +6,7 @@ function results = alfonso_iter_isolate(iter, mat_dir, gH)
 %    saved.
     
     cold_start_data = load(fullfile(mat_dir, sprintf("%d.mat", iter)));
+    cold_start_data = cold_start_data.cold_start_data;
     alf_params = cold_start_data.fn_params;
     probData = alf_params.prob_data;
     gH_Params = alf_params.gH_params;

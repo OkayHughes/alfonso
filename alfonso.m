@@ -227,7 +227,6 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
             end
         end
         results.mu(iter) = soln.mu;
-        
     end
     
     % prepares final solution and iteration statistics
