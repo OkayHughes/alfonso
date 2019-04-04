@@ -184,7 +184,7 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
         
         % PREDICTOR PHASE
         [soln, alphaPred, betaPred, algParams, predStatus] =...
-            pred(soln, probData, gH, gH_Params, myLinSolve, algParams, opts);
+            pred(soln, probData, gH, gH_Params, @linSolveIsolate, algParams, opts);
         
         results.alphaPred(iter) = alphaPred;
         results.betaPred(iter)  = betaPred;
