@@ -32,6 +32,14 @@ function [delta, probData] = linSolve3(soln, probData, RHS)
     HiAt    = -soln.L'\(soln.L\A');
     Hirxrs  = soln.L'\(soln.L\(rx+rs));
     fprintf("cond(H) = %5e\n", cond(soln.L * soln.L'))
+    
+    f = figure('visible','off');
+    global figcount;
+    figcount = figcount + 1;
+    eigens = eig(soln.L * soln.L');
+    plot(sort(eigens))
+    saveas(f,sprintf('plots/%d', figcount),'png')
+    
     fprintf("cond(At) = %5e\n", cond(A'));
     fprintf("cond(HiAt) = %5e\n", cond(HiAt));
     fprintf("cond(Hmat) = %5e\n", cond([HiAt, Hic]));

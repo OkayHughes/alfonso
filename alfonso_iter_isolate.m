@@ -12,6 +12,8 @@ function results = alfonso_iter_isolate(iter, mat_dir, gH)
     gH_Params = alf_params.gH_params;
     opts = alf_params.opts;
     
+    global figcount;
+    figcount = 0;
     
     
     % sets algorithmic options
@@ -33,7 +35,7 @@ function results = alfonso_iter_isolate(iter, mat_dir, gH)
       sparse(1,m)   sparse(1,n)      1            sparse(1,n)    1          ];
 
     % sets the solution method for the Newton system
-    myLinSolve = @linSolve3;
+    myLinSolve = @linSolveIsolate;
     
     % creates arrays for iteration statistics
     results.alphaPred   = 0;
