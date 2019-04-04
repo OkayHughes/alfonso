@@ -26,6 +26,12 @@ function [solnAlpha, alpha, betaAlpha, algParams, predStatus] = pred(soln, probD
 % None.
 % --------------------------------------------------------------------------
 
+    if isfield(opts, "verbose")
+        if opts.verbose
+            fprintf("Entering Corrector\n\n")
+        end
+    end
+    
     x       = soln.x;
     tau     = soln.tau;
     s       = soln.s;

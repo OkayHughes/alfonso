@@ -23,7 +23,11 @@ function [solnAlpha, corrStatus] = corr(soln, probData, gH, gH_Params, myLinSolv
 % EXTERNAL FUNCTIONS CALLED IN THIS FUNCTION
 % None.
 % --------------------------------------------------------------------------
-
+    if isfield(opts, "verbose")
+        if opts.verbose
+            fprintf("Entering Corrector\n\n")
+        end
+    end
     [m, n] = size(probData.A);
     
     RHS = zeros(m+2*n+2,1);
