@@ -33,7 +33,7 @@ function [delta, probData] = linSolve3(soln, probData, RHS)
     sing = diag(S);
     sing_inv = 1./sing;
     sing_inv(sing < 1e-5) = 0;
-    inver = V * sing_inv * U';
+    inver = V * diag(sing_inv) * U';
     
     Hic     = inver * c;
     HiAt    = inver * A';
@@ -43,7 +43,7 @@ function [delta, probData] = linSolve3(soln, probData, RHS)
     f = figure('visible','off');
     global figcount;
     figcount = figcount + 1;
-    bad_cond = soln.L'\(soln.L\eye(size(L)));
+    badCond = inv(soln.L * soln.L');
     eigens = eig(badCond);
     plot(sort(eigens))
     saveas(f,sprintf('plots/inv_%d', figcount),'png')
