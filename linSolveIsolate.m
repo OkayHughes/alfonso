@@ -29,7 +29,7 @@ function [delta, probData] = linSolve3(soln, probData, RHS)
     rkappa = RHS(end);
     
     inter = soln.L * soln.L';
-    [U, S, V] = SVD(inter);
+    [U, S, V] = svd(inter);
     sing = diag(S);
     sing_inv = 1./sing;
     sing_inv(sing < 1e-5) = 0;
