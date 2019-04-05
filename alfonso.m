@@ -102,7 +102,8 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
 % EXTERNAL FUNCTIONS CALLED IN THIS FUNCTION
 % None.
 % --------------------------------------------------------------------------
-
+    global figcount;
+    figcount = 0;
     if nargin == 4
         opts = struct([]);
     elseif nargin < 4
