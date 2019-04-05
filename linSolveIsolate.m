@@ -36,9 +36,13 @@ function [delta, probData] = linSolve3(soln, probData, RHS)
     f = figure('visible','off');
     global figcount;
     figcount = figcount + 1;
+    eigens = eig(inv(soln.L * soln.L'));
+    plot(sort(eigens))
+    saveas(f,sprintf('plots/inv_%d', figcount),'png')
+    f = figure('visible','off');
     eigens = eig(soln.L * soln.L');
     plot(sort(eigens))
-    saveas(f,sprintf('plots/%d', figcount),'png')
+    saveas(f,sprintf('plots/hess_%d', figcount),'png')
     
     fprintf("cond(At) = %5e\n", cond(A'));
     fprintf("cond(HiAt) = %5e\n", cond(HiAt));
