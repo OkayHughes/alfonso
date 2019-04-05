@@ -28,29 +28,36 @@ function [delta, probData] = linSolve3(soln, probData, RHS)
     rs     = RHS(m+n+1+(1:n));
     rkappa = RHS(end);
     
-    inter = soln.L * soln.L';
-    [U, S, V] = svd(inter);
-    sing = diag(S);
-    sing_inv = 1./sing;
-    sing_inv(sing < 1e-5) = 0;
-    inver = V * diag(sing_inv) * U';
+%     inter = soln.L * soln.L';
+%     [U, S, V] = svd(inter);
+%     sing = diag(S);
+%     sing_inv = 1./sing;
+%     sing_inv(sing < 1e-10) = 0;
+%     inver = V * diag(sing_inv) * U';
     
-    Hic     = inver * c;
-    HiAt    = inver * A';
-    Hirxrs  = inver * rx+rs;
+%     Hic     = inver * c;
+%     HiAt    = inver * A';
+%     Hirxrs  = inver * rx+rs;
     fprintf("cond(H) = %5e\n", cond(soln.L * soln.L'))
+
+    Hic     = soln.L'\(soln.L\c);
+    fprintf("%5d\n", norm(soln.L * soln.L' * Hic - c))
+    HiAt    = -soln.L'\(soln.L\A');
+    fprintf("%5d\n", norm(soln.L * soln.L' * HiAt - A'))
+    Hirxrs  = soln.L'\(soln.L\(rx+rs));
+    fprintf("%5d\n", norm(soln.L * soln.L' * Hirxrs - rx + rs))
     
-    f = figure('visible','off');
-    global figcount;
-    figcount = figcount + 1;
-    badCond = inv(soln.L * soln.L');
-    eigens = eig(badCond);
-    plot(sort(eigens))
-    saveas(f,sprintf('plots/inv_%d', figcount),'png')
-    f = figure('visible','off');
-    eigens = eig(soln.L * soln.L');
-    plot(sort(eigens))
-    saveas(f,sprintf('plots/hess_%d', figcount),'png')
+%     f = figure('visible','off');
+%     global figcount;
+%     figcount = figcount + 1;
+%     badCond = inv(soln.L * soln.L');
+%     eigens = eig(badCond);
+%     plot(sort(eigens))
+%     saveas(f,sprintf('plots/inv_%d', figcount),'png')
+%     f = figure('visible','off');
+%     eigens = eig(soln.L * soln.L');
+%     plot(sort(eigens))
+%     saveas(f,sprintf('plots/hess_%d', figcount),'png')
     
     fprintf("cond(At) = %5e\n", cond(A'));
     fprintf("cond(HiAt) = %5e\n", cond(HiAt));
@@ -61,6 +68,7 @@ function [delta, probData] = linSolve3(soln, probData, RHS)
     fprintf("cond(LHS) = %5e\n", cond(LHSdydtau));
     RHSdydtau   = [ry; rtau+rkappa] - [A; -c']*Hirxrs/soln.mu;
     dydtau      = LHSdydtau\RHSdydtau;
+    fprintf("%5d\n", norm(LHSdydtau * RHSdydtau - dydtau))
     dx          = (Hirxrs - [HiAt, Hic]*dydtau)/soln.mu;
 
     delta               = zeros(m+2*n+2, 1);
