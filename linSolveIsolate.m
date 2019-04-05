@@ -28,15 +28,23 @@ function [delta, probData] = linSolve3(soln, probData, RHS)
     rs     = RHS(m+n+1+(1:n));
     rkappa = RHS(end);
     
-    Hic     = soln.L'\(soln.L\c);
-    HiAt    = -soln.L'\(soln.L\A');
-    Hirxrs  = soln.L'\(soln.L\(rx+rs));
+    inter = soln.L * soln.L';
+    [U, S, V] = SVD(inter);
+    sing = diag(S);
+    sing_inv = 1./sing;
+    sing_inv(sing < 1e-5) = 0;
+    inver = V * sing_inv * U';
+    
+    Hic     = inver * c;
+    HiAt    = inver * A';
+    Hirxrs  = inver * rx+rs;
     fprintf("cond(H) = %5e\n", cond(soln.L * soln.L'))
     
     f = figure('visible','off');
     global figcount;
     figcount = figcount + 1;
-    eigens = eig(inv(soln.L * soln.L'));
+    bad_cond = soln.L'\(soln.L\eye(size(L)));
+    eigens = eig(badCond);
     plot(sort(eigens))
     saveas(f,sprintf('plots/inv_%d', figcount),'png')
     f = figure('visible','off');
