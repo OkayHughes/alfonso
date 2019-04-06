@@ -28,32 +28,36 @@ function [delta, probData] = linSolve3(soln, probData, RHS)
     rs     = RHS(m+n+1+(1:n));
     rkappa = RHS(end);
     
-%     inter = soln.L * soln.L';
-%     [U, S, V] = svd(inter);
-%     sing = diag(S);
-%     sing_inv = 1./sing;
-%     sing_inv(sing < 1e-10) = 0;
-%     inver = V * diag(sing_inv) * U';
+    inter = soln.L * soln.L';
+    [U, S, V] = svd(inter);
+    sing = diag(S);
+    sing_inv = 1./sing;
+    sing_inv(sing < 1e-10) = 0;
+    inver = V * diag(sing_inv) * U';
     
-%     Hic     = inver * c;
-%     HiAt    = inver * A';
-%     Hirxrs  = inver * rx+rs;
+    Hic     = inver * c;
+    HiAt    = -inver * A';
+    Hirxrs  = inver * (rx+rs);
     fprintf("cond(H) = %5e\n", cond(soln.L * soln.L'))
 
-    Hic     = soln.L'\(soln.L\c);
-    fprintf("%5d\n", norm(soln.L * soln.L' * Hic - c))
-    HiAt    = -soln.L'\(soln.L\A');
-    fprintf("%5d\n", norm(soln.L * soln.L' * HiAt - A'))
-    Hirxrs  = soln.L'\(soln.L\(rx+rs));
-    fprintf("%5d\n", norm(soln.L * soln.L' * Hirxrs - rx + rs))
+    Hic_alt     = soln.L'\(soln.L\c);
     
-%     f = figure('visible','off');
-%     global figcount;
-%     figcount = figcount + 1;
-%     badCond = inv(soln.L * soln.L');
-%     eigens = eig(badCond);
-%     plot(sort(eigens))
-%     saveas(f,sprintf('plots/inv_%d', figcount),'png')
+    HiAt_alt    = -soln.L'\(soln.L\A');
+    
+    Hirxrs_alt  = soln.L'\(soln.L\(rx+rs));
+    
+    
+    fprintf("Hic residual: %5d\n", norm(soln.L * soln.L' * Hic - c))
+    fprintf("HiAt residual: %5d\n", norm(soln.L * soln.L' * HiAt - A'))
+    fprintf("Hirxrs residual: %5d\n", norm(soln.L * soln.L' * Hirxrs - (rx + rs)))
+    fprintf("Hic_alt residual: %5d\n", norm(soln.L * soln.L' * Hic_alt - c))
+    fprintf("HiAt_alt residual: %5d\n", norm(soln.L * soln.L' * HiAt_alt - A'))
+    fprintf("Hirxrs_alt residual: %5d\n", norm(soln.L * soln.L' * Hirxrs_alt - (rx + rs)))
+    fprintf("Hic exp: %5d\n", norm(Hic_alt - Hic))
+    fprintf("HiAt exp: %5d\n", norm(HiAt_alt - HiAt))
+    fprintf("Hirxrs exp: %5d\n", norm(Hirxrs_alt - Hirxrs))
+    
+
 %     f = figure('visible','off');
 %     eigens = eig(soln.L * soln.L');
 %     plot(sort(eigens))
@@ -65,10 +69,16 @@ function [delta, probData] = linSolve3(soln, probData, RHS)
     oof = [A; -c']*[HiAt, Hic]; 
     fprintf("cond(hmat product) = %5e\n", cond(oof))
     LHSdydtau   = [zeros(m), -b; b', soln.mu/soln.tau^2] - [A; -c']*[HiAt, Hic]/soln.mu;
+    f = figure('visible','off');
+    global figcount;
+    figcount = figcount + 1;
+    eigens = eig(LHSdydtau);
+    plot(sort(eigens))
+    saveas(f,sprintf('plots/LHS_%d', figcount),'png')
     fprintf("cond(LHS) = %5e\n", cond(LHSdydtau));
     RHSdydtau   = [ry; rtau+rkappa] - [A; -c']*Hirxrs/soln.mu;
     dydtau      = LHSdydtau\RHSdydtau;
-    fprintf("%5d\n", norm(LHSdydtau * dydtau - RHSdydtau))
+    fprintf("LHS residual: %5d\n", norm(LHSdydtau * dydtau - RHSdydtau))
     dx          = (Hirxrs - [HiAt, Hic]*dydtau)/soln.mu;
 
     delta               = zeros(m+2*n+2, 1);
