@@ -48,10 +48,10 @@ function [delta, probData] = linSolve3(soln, probData, RHS)
     
     
     fprintf("Hic residual: %5d\n", norm(soln.L * soln.L' * Hic - c))
-    fprintf("HiAt residual: %5d\n", norm(soln.L * soln.L' * HiAt - A'))
+    fprintf("HiAt residual: %5d\n", norm(soln.L * soln.L' * HiAt + A'))
     fprintf("Hirxrs residual: %5d\n", norm(soln.L * soln.L' * Hirxrs - (rx + rs)))
     fprintf("Hic_alt residual: %5d\n", norm(soln.L * soln.L' * Hic_alt - c))
-    fprintf("HiAt_alt residual: %5d\n", norm(soln.L * soln.L' * HiAt_alt - A'))
+    fprintf("HiAt_alt residual: %5d\n", norm(soln.L * soln.L' * HiAt_alt + A'))
     fprintf("Hirxrs_alt residual: %5d\n", norm(soln.L * soln.L' * Hirxrs_alt - (rx + rs)))
     fprintf("Hic exp: %5d\n", norm(Hic_alt - Hic))
     fprintf("HiAt exp: %5d\n", norm(HiAt_alt - HiAt))
