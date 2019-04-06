@@ -68,7 +68,7 @@ function [delta, probData] = linSolve3(soln, probData, RHS)
     fprintf("cond(LHS) = %5e\n", cond(LHSdydtau));
     RHSdydtau   = [ry; rtau+rkappa] - [A; -c']*Hirxrs/soln.mu;
     dydtau      = LHSdydtau\RHSdydtau;
-    fprintf("%5d\n", norm(LHSdydtau * RHSdydtau - dydtau))
+    fprintf("%5d\n", norm(LHSdydtau * dydtau - RHSdydtau))
     dx          = (Hirxrs - [HiAt, Hic]*dydtau)/soln.mu;
 
     delta               = zeros(m+2*n+2, 1);
