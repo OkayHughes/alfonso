@@ -69,16 +69,16 @@ function [delta, probData] = linSolve3(soln, probData, RHS)
     oof = [A; -c']*[HiAt, Hic]; 
     fprintf("cond(hmat product) = %5e\n", cond(oof))
     LHSdydtau   = [zeros(m), -b; b', soln.mu/soln.tau^2] - [A; -c']*[HiAt, Hic]/soln.mu;
-    f = figure('visible','off');
-    global figcount;
-    figcount = figcount + 1;
-    eigens = eig(LHSdydtau);
-    plot(sort(eigens))
-    saveas(f,sprintf('plots/LHS_%d', figcount),'png')
-    fprintf("cond(LHS) = %5e\n", cond(LHSdydtau));
+%     f = figure('visible','off');
+%     global figcount;
+%     figcount = figcount + 1;
+%     eigens = eig(LHSdydtau);
+%     plot(sort(eigens))
+%     saveas(f,sprintf('plots/LHS_%d', figcount),'png')
+%     fprintf("cond(LHS) = %5e\n", cond(LHSdydtau));
     RHSdydtau   = [ry; rtau+rkappa] - [A; -c']*Hirxrs/soln.mu;
     dydtau      = LHSdydtau\RHSdydtau;
-    fprintf("LHS residual: %5d\n", norm(LHSdydtau * dydtau - RHSdydtau))
+    fprintf("LHS residual: %5d\n\n", norm(LHSdydtau * dydtau - RHSdydtau))
     dx          = (Hirxrs - [HiAt, Hic]*dydtau)/soln.mu;
 
     delta               = zeros(m+2*n+2, 1);

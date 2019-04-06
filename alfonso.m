@@ -206,7 +206,7 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
         % in the eta-neighborhood 
         if (~opts.corrCheck || results.etaCorr(iter) > algParams.eta) && ~termFlag
             for corrIter = 1:algParams.maxCorrSteps
-                [soln, corrStatus] = corr(soln, probData, gH, gH_Params, myLinSolve, algParams, opts);
+                [soln, corrStatus] = corr(soln, probData, gH, gH_Params, @linSolveIsolate, algParams, opts);
                 % exits corrector phase and raises a termination flag if 
                 % last corrector step was not successful
                 if corrStatus == 0
@@ -451,6 +451,7 @@ function [status, metrics] = term(soln, probData, algParams, termConsts)
 
     % complementarity gap of the initial iterate
     mu0 = 1;
+    
 
     % termination criteria
     P =    metrics.P   <= algParams.optimTol;
@@ -460,6 +461,7 @@ function [status, metrics] = term(soln, probData, algParams, termConsts)
     T =    tau <= algParams.optimTol * 1e-02 * max(1, kappa);
     K =    tau <= algParams.optimTol * 1e-02 * min(1, kappa);
     M =    mu  <= algParams.optimTol * 1e-02 * mu0;
+    fprintf("Termination criteria: P=%5d D=%5d G=%5d A=%5d T=%5d K=%5d M=%5d\n", metrics.P - algParams.optimTol, metrics.D - algParams.optimTol, metrics.G - algParams.optimTol, metrics.A - algParams.optimTol, tau - algParams.optimTol * 1e-02 * min(1, kappa), tau-algParams.optimTol * 1e-02 * min(1, kappa), mu - algParams.optimTol * 1e-02 * mu0)
 
     if P && D && AA
         status = 'Feasible and approximate optimal solution found.';

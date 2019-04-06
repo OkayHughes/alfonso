@@ -25,7 +25,8 @@ function [solnAlpha, corrStatus] = corr(soln, probData, gH, gH_Params, myLinSolv
 % --------------------------------------------------------------------------
     if isfield(opts, "verbose")
         if opts.verbose
-            fprintf("Entering Corrector\n\n")
+            fprintf("Entering Corrector\n")
+            fprintf("==================\n\n")
         end
     end
     [m, n] = size(probData.A);

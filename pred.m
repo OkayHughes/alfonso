@@ -28,7 +28,8 @@ function [solnAlpha, alpha, betaAlpha, algParams, predStatus] = pred(soln, probD
 
     if isfield(opts, "verbose")
         if opts.verbose
-            fprintf("Entering Corrector\n\n")
+            fprintf("Entering Predictor\n")
+            fprintf("==================\n\n")
         end
     end
     
