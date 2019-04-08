@@ -35,16 +35,16 @@ function [delta, probData] = linSolve3(soln, probData, RHS)
     sing_inv(sing < 1e-10) = 0;
     inver = V * diag(sing_inv) * U';
     
-    Hic_alt     = inver * c;
-    HiAt_alt    = -inver * A';
-    Hirxrs_alt  = inver * (rx+rs);
+    Hic     = inver * c;
+    HiAt    = -inver * A';
+    Hirxrs  = inver * (rx+rs);
     fprintf("cond(H) = %5e\n", cond(soln.L * soln.L'))
-
-    Hic     = soln.L'\(soln.L\c);
     
-    HiAt    = -soln.L'\(soln.L\A');
+    Hic_alt     = soln.L'\(soln.L\c);
     
-    Hirxrs  = soln.L'\(soln.L\(rx+rs));
+    HiAt_alt    = -soln.L'\(soln.L\A');
+    
+    Hirxrs_alt  = soln.L'\(soln.L\(rx+rs));
     
     
     fprintf("Hic residual: %5d\n", norm(soln.L * soln.L' * Hic - c))
