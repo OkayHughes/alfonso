@@ -22,9 +22,8 @@ function dsoln = linSolveMain(soln, probData, RHS, myLinSolve, algParams, opts)
     
     [m, n] = size(probData.A);
     delta  = myLinSolve(soln, probData, RHS);
-    
+    eps
     if opts.maxItRefineSteps > 0 
-               
         % checks to see if we need to refine the solution
         if rcond(full(soln.H)) < eps            
             
@@ -36,6 +35,7 @@ function dsoln = linSolveMain(soln, probData, RHS, myLinSolve, algParams, opts)
             res         = residual3p(LHS, delta, RHS);
             resNorm     = norm(res);  
             for iter = 1:opts.maxItRefineSteps
+                fprintf("ITERATIVE REFINEMENT STEP\n")
                 if exitFlag; break; end;
                 d           = myLinSolve(soln, probData, res);
                 deltaNew	= delta - d;
