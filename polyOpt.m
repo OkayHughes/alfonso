@@ -22,7 +22,7 @@
 % None.
 % -------------------------------------------------------------------------
 
-function sol = polyOpt(degree)
+function sol = polyOpt(vars, costPoly, polyWeights, ub, lb, intParams)
 % This is the main method for the sum-of-squares optimization approach to 
 % to the polynomial optimization problem.
 % --------------------------------------------------------------------------
@@ -84,7 +84,6 @@ function sol = polyOpt(degree)
 % None.
 % -------------------------------------------------------------------------
     tol = 1e-5;
-    intParams = FeketeCube(1, degree);
     
     n   = intParams.n;
     d   = intParams.d;
@@ -92,55 +91,17 @@ function sol = polyOpt(degree)
     L   = intParams.L;
     P0  = intParams.P0;
     pts = intParams.pts;
-    lb = -1;
-    ub = 1;
     
     % transforms points to fit the domain
     scale   = (ub-lb)/2;
     shift   = (lb+ub)/2;
-    pts     = bsxfun(@plus,bsxfun(@times,pts,scale'),shift');    
-    wtVals  = pts; %This is the line where the polynomial weights g_i are evaluated on the interpolation points
-                   %eg: this is the weight g(x) = x
-                   %This defines the set x \geq 0
-    %wtVals = pts - 1; %g(x) = x - 1, x \geq -1
+    pts     = bsxfun(@plus,bsxfun(@times,pts,scale'),shift');
     
+    wtVals = msubs(polyWeights, vars, pts')';
     
-    % ORDER OF VARIABLES 
-    % x \in WSOS_(n,2*d)^*
-   
-    % WEIGHTS
-    % weight #0: 1
-    % degree of associated SOS multiplier: 2*d
-    % weight #j for j = 1,...,n: (lb_j-t_j)(ub_j-t_j)
-    % degree of associated SOS multiplier: 2*d-2
+    costVec = msubs(costPoly, vars, pts')';
 
-    LWts = nchoosek(n+d-1,n)*ones(n,1);
-    
-    % PARAMETERS ASSOCIATED WITH THE METHOD gH_polyOpt
-    % see input description for gH_polyOpt for details
-
-    gH_Params.n = n;
-    gH_Params.d = d;
-    gH_Params.U = U;
-    
-    gH_Params.L     = L;
-    gH_Params.LWts  = LWts;
-    nu              = L + sum(LWts);
-    gH_Params.bnu	= nu+1;
-
-    % P0 has columns of Chebyshev polynomial evaluations:
-
-  
-    gH_Params.P = P0;
-    % associated positive semidefinite cone constraint:
-    % P0'*diag(x)*P0 >= 0
-    PWts = cell(n,1);
-    for j = 1:n
-        PWts{j} = diag(sqrt(wtVals(:,j)))*P0(:,1:LWts(j));
-        % associated positive semidefinite cone constraint: 
-        % PWts{j}'*diag(x)*PWts{j} >= 0
-    end
-    gH_Params.PWts = PWts;
+    gH_Params = gen_gH_Params(intParams, wtVals);
     
     % x \in WSOS_(n,2*d)^* <=> 
     % P'*diag(x)*P >= 0, PWts{1}'*diag(x)*PWts{1} >= 0, PWts{2}'*diag(x)*PWts{2} >= 0,...
@@ -148,7 +109,7 @@ function sol = polyOpt(degree)
     % DATA FOR THE CONIC OPTIMIZATION PROBLEM
     probData.A = ones(1,U);
     probData.b = 1;
-    probData.c = pts; %This pts should be a vector of the values of the objective function on the interpolant points
+    probData.c = costVec; %This pts should be a vector of the values of the objective function on the interpolant points
                       % In this case the objective function is f(x) = x
 
     tic
@@ -180,7 +141,8 @@ function sol = polyOpt(degree)
     fprintf('Relative duality gap: %d\n', sol.rel_dGap);
     fprintf('Relative complementarity gap: %d\n\n', sol.rel_cGap);
     
-return
+    return
+end
 
 function [in, g, H, L] = gH_polyOpt(x, params)
 % This method computes the gradient and Hessian of the barrier function for
@@ -228,6 +190,7 @@ function [in, g, H, L] = gH_polyOpt(x, params)
     n       = params.n;
     P       = params.P;
     PWts    = params.PWts;
+    numwts = size(PWts, 1);
     
     % ORDER OF VARIABLES 
     % x \in WSOS_(n,2*d)^*
@@ -236,7 +199,7 @@ function [in, g, H, L] = gH_polyOpt(x, params)
     [in, g, H] = gH_SOSWt(x,P);
     
     if in == 1
-        for j = 1:n
+        for j = 1:numwts
             % for the weight (lb_j+t_j)(ub_j-t_j)
             [inWt, gWt, HWt] = gH_SOSWt(x,PWts{j});
             in  = in & inWt;
@@ -261,7 +224,8 @@ function [in, g, H, L] = gH_polyOpt(x, params)
         L = NaN;
     end
     
-return
+    return
+end
 
 function [in, g, H] = gH_SOSWt(x, P)
 % This method computes the gradient and Hessian of a barrier function term
@@ -307,4 +271,51 @@ function [in, g, H] = gH_SOSWt(x, P)
         H = VtV.^2;
     end
     
-return
+    return
+end
+
+function gH_Params = gen_gH_Params(intParams, wtVals)
+    n   = intParams.n;
+    d   = intParams.d;
+    U   = intParams.U;
+    L   = intParams.L;
+    P0  = intParams.P0;
+    
+    numwts = size(wtVals, 2);
+    
+    
+    % ORDER OF VARIABLES 
+    % x \in WSOS_(n,2*d)^*
+   
+    % WEIGHTS
+    % weight #0: 1
+    % degree of associated SOS multiplier: 2*d
+    % weight #j for j = 1,...,n: (lb_j-t_j)(ub_j-t_j)
+    % degree of associated SOS multiplier: 2*d-2
+
+    LWts = nchoosek(n+d-1,n)*ones(numwts,1);
+    
+    % PARAMETERS ASSOCIATED WITH THE METHOD gH_polyOpt
+    % see input description for gH_polyOpt for details
+
+    gH_Params.n = n;
+    gH_Params.d = d;
+    gH_Params.U = U;
+    
+    gH_Params.L     = L;
+    gH_Params.LWts  = LWts;
+    nu              = L + sum(LWts);
+    gH_Params.bnu	= nu+1;
+  
+    gH_Params.P = P0;
+    % associated positive semidefinite cone constraint:
+    % P0'*diag(x)*P0 >= 0
+    PWts = cell(numwts,1);
+    for j = 1:numwts
+        PWts{j} = diag(sqrt(wtVals(:,j)))*P0(:,1:LWts(j));
+        % associated positive semidefinite cone constraint: 
+        % PWts{j}'*diag(x)*PWts{j} >= 0
+    end
+    gH_Params.PWts = PWts;
+end
+
