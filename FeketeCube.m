@@ -119,6 +119,7 @@ function intParams = FeketeCube(n,d)
     w = P'\m;
     ind = abs(w)>0;
     
+    
     % extracts the positive entries of w
     w = w(ind);
     % extracts the subset of points indexed with the support of w
@@ -129,6 +130,7 @@ function intParams = FeketeCube(n,d)
     intParams.w = w;
     intParams.pts = pts;
     intParams.P0 = P;
+    size(P);
     [intParams.P,~] = qr(P,0);
       
 return

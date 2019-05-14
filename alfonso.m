@@ -146,6 +146,8 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
     results.betaPred    = zeros(algParams.maxIter, 1);
     results.etaCorr     = zeros(algParams.maxIter, 1);
     results.mu          = zeros(algParams.maxIter, 1);
+    results.hessEigArea = cell(0);
+    results.hessIterNum = cell(0);
     
     % sets constants for termination criteria
     termConsts.pRes = max([1, norm([A,b],Inf)]);
@@ -185,7 +187,11 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
         
         % PREDICTOR PHASE
         [soln, alphaPred, betaPred, algParams, predStatus] =...
-            pred(soln, probData, gH, gH_Params, @linSolveIsolate, algParams, opts);
+            pred(soln, probData, gH, gH_Params, myLinSolve, algParams, opts);
+        
+        hessArea = areaHessEigs(soln.H);
+        results.hessEigArea{size(results.hessEigArea, 1) + 1, 1} = hessArea;
+        results.hessIterNum{size(results.hessIterNum, 1) + 1, 1} = iter;
         
         results.alphaPred(iter) = alphaPred;
         results.betaPred(iter)  = betaPred;
@@ -206,7 +212,11 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
         % in the eta-neighborhood 
         if (~opts.corrCheck || results.etaCorr(iter) > algParams.eta) && ~termFlag
             for corrIter = 1:algParams.maxCorrSteps
-                [soln, corrStatus] = corr(soln, probData, gH, gH_Params, @linSolveIsolate, algParams, opts);
+                [soln, corrStatus] = corr(soln, probData, gH, gH_Params, myLinSolve, algParams, opts);
+                
+                hessArea = areaHessEigs(soln.H);
+                results.hessEigArea{size(results.hessEigArea, 1) + 1, 1} = hessArea;
+                results.hessIterNum{size(results.hessIterNum, 1) + 1, 1} = iter;
                 % exits corrector phase and raises a termination flag if 
                 % last corrector step was not successful
                 if corrStatus == 0
