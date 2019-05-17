@@ -1,11 +1,13 @@
-function ret = testPolyOpt(frac)
-degree = 6;
+function ret = testPolyOpt(nvars, deg, scalefac)
+degree = deg;
 
-vars = msspoly('x', 3);
-costPoly = vars(1)^5 + vars(2)^2 - vars(3)^1 + 1;
-ub = [1; 1; 1];
-lb = [-1; -1; -1];
+vars = msspoly('x', nvars);
+costPoly = ones(1, nvars) * vars.^2 - 1;
+ub = ones(nvars, 1);
+lb = -1 * ones(nvars, 1);
 polyWeights = (vars - ub) .* (lb - vars);
+ub = ub * scalefac;
+lb = lb * scalefac;
 
 intParams = FeketeBasis(size(vars, 1), degree, 1);
 intParams = cubeFromBasis(intParams);
