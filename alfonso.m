@@ -147,6 +147,7 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
     results.etaCorr     = zeros(algParams.maxIter, 1);
     results.mu          = zeros(algParams.maxIter, 1);
     results.hessEigArea = cell(0);
+    results.hessCond = cell(0);
     results.hessIterNum = cell(0);
     
     % sets constants for termination criteria
@@ -190,7 +191,9 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
             pred(soln, probData, gH, gH_Params, myLinSolve, algParams, opts);
         
         hessArea = areaHessEigs(soln.H);
+        hessCond = cond(soln.H);
         results.hessEigArea{size(results.hessEigArea, 1) + 1, 1} = hessArea;
+        results.hessCond{size(results.hessCond, 1) + 1, 1} = hessCond;
         results.hessIterNum{size(results.hessIterNum, 1) + 1, 1} = iter;
         
         results.alphaPred(iter) = alphaPred;
@@ -215,7 +218,9 @@ function results = alfonso(probData, x0, gH, gH_Params, opts)
                 [soln, corrStatus] = corr(soln, probData, gH, gH_Params, myLinSolve, algParams, opts);
                 
                 hessArea = areaHessEigs(soln.H);
+                hessCond = cond(soln.H);
                 results.hessEigArea{size(results.hessEigArea, 1) + 1, 1} = hessArea;
+                results.hessCond{size(results.hessCond, 1) + 1, 1} = hessCond;
                 results.hessIterNum{size(results.hessIterNum, 1) + 1, 1} = iter;
                 % exits corrector phase and raises a termination flag if 
                 % last corrector step was not successful
