@@ -126,6 +126,7 @@ function sol = polyOpt(vars, costPoly, polyWeights, ub, lb, intParams)
     
     % CUSTOM ALGORITHMIC OPTIONS
     opts.optimTol = tol;
+    opts.maxCorrSteps = 2;
     
     % CALL TO alfonso
     sol = alfonso(probData,x0,@gH_polyOpt,gH_Params,opts);
