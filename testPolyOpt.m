@@ -11,8 +11,21 @@ lb = lb * scalefac;
 
 intParams = FeketeBasis(size(vars, 1), degree, 1);
 intParams = cubeFromBasis(intParams);
-ret = polyOpt(vars, costPoly, polyWeights, ub, lb, intParams)
+ret = polyOpt(vars, costPoly, polyWeights, ub, lb, intParams);
 
-scatter(cell2mat(ret.hessIterNum), cell2mat(ret.hessEigArea))
+hessIterNum = ret.solnIterNum;
+hessCond = zeros(size(ret.solnIterNum));
+hessEigArea = zeros(size(ret.solnIterNum));
+
+for i=1:size(hessIterNum, 1)
+    soln = ret.solns{i};
+    hessCond(i) = cond(soln.H);
+    hessEigArea = areaHessEigs(soln.H);
+end
+
+ret.hessEigArea = hessEigArea;
+ret.hessCond = hessCond;
+
+%scatter(cell2mat(ret.solnIterNum), ret.hessEigArea)
 
 end
