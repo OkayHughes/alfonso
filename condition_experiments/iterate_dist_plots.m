@@ -11,5 +11,8 @@ for i=1:size(labels, 1)
 end
 legend()
 
+if exist("figname", 'var')
 saveas(gcf, sprintf("plots/%s", figname));
+end
+
 end
