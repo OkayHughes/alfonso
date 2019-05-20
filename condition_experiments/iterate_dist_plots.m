@@ -12,7 +12,7 @@ end
 legend()
 
 if exist("figname", 'var')
-saveas(gcf, sprintf("plots/%s", figname));
+saveas(gcf, sprintf("plots/%s.png", figname));
 end
 
 end
