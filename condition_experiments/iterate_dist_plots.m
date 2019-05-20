@@ -1,4 +1,4 @@
-function iterate_dist_plots(rets, labels)
+function iterate_dist_plots(rets, labels, figname)
 [iter_nums, dists] = iterate_dists_from_cell_array(rets);
 figure(); hold on;
 title("Distance from iterate $i$ to final iterate");
@@ -10,3 +10,6 @@ for i=1:size(labels, 1)
 
 end
 legend()
+
+saveas(gcf, sprintf("plots/%s", figname));
+end
