@@ -309,7 +309,7 @@ function algParams = setAlgParams(gH_Params, opts)
 % --------------------------------------------------------------------------
 
     algParams.maxIter           = 10000;
-    algParams.optimTol            = opts.optimTol;
+    algParams.optimTol          = opts.optimTol;
     
     algParams.alphaCorr         = 1.0;
     algParams.predLSMulti       = 0.7;
@@ -320,6 +320,7 @@ function algParams = setAlgParams(gH_Params, opts)
     % step takes the current iterate from the eta-neighborhood to the
     % beta-neighborhood and each corrector phase takes the current 
     % iterate from the beta-neighborhood to the eta-neighborhood.
+    
     % extra corrector steps are allowed to mitigate the effects of
     % finite precision.
     algParams.maxCorrSteps      = 2*opts.maxCorrSteps;

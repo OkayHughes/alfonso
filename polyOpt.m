@@ -125,9 +125,9 @@ function sol = polyOpt(vars, costPoly, polyWeights, ub, lb, intParams)
     x0 = repmat(sqrt(rP*rD), U, 1);
     
     % CUSTOM ALGORITHMIC OPTIONS
-    opts.optimTol = tol;
+    opts.optimTol = tol ;
     opts.maxCorrSteps = 2;
-    opts.maxItRefineSteps = 5;
+    opts.maxItRefineSteps = 10;
     
     % CALL TO alfonso
     sol = alfonso(probData,x0,@gH_polyOpt,gH_Params,opts);

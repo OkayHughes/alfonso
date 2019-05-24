@@ -22,7 +22,7 @@ function dsoln = linSolveMain(soln, probData, RHS, myLinSolve, algParams, opts)
     
     [m, n] = size(probData.A);
     delta  = myLinSolve(soln, probData, RHS);
-    if opts.maxItRefineSteps > 0 
+    if opts.maxItRefineSteps > 0
         % checks to see if we need to refine the solution       
             
         LHS                         = probData.LHS;    
